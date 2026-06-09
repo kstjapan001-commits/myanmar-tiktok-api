@@ -4,3 +4,4 @@ requests==2.32.3
 yt-dlp==2024.5.27
 pydantic==2.7.4
 gtts==2.5.1
+googletrans==4.0.0rc1

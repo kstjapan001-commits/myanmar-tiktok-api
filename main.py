@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Myanmar TikTok API — 100% FREE, zero API keys needed
-Pipeline: yt-dlp → googletrans (free) → gTTS (free) → FFmpeg
+Myanmar TikTok API â 100% FREE, zero API keys needed
+Pipeline: yt-dlp â googletrans (free) â gTTS (free) â FFmpeg
 No signup, no credit card, no API keys required.
 """
 
@@ -13,12 +13,12 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from gtts import gTTS
 
-app = FastAPI(title="Myanmar TikTok API — Free", version="3.0.0")
+app = FastAPI(title="Myanmar TikTok API â Free", version="3.0.0")
 
 API_SECRET = os.environ.get("API_SECRET", "")
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# ââ Helpers âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 def parse_vtt(text: str) -> list[str]:
     """Extract subtitle lines from VTT, return list of clean strings."""
@@ -37,22 +37,19 @@ def parse_vtt(text: str) -> list[str]:
 
 
 def translate_to_myanmar(lines: list[str]) -> list[str]:
-    """Translate a list of English lines to Myanmar using googletrans (free)."""
-    from googletrans import Translator
-    translator = Translator()
+    """Translate a list of English lines to Myanmar using deep-translator (free)."""
+    from deep_translator import GoogleTranslator
+    translator = GoogleTranslator(source="en", target="my")
     result = []
-    # Translate in small batches to avoid rate limits
     batch_size = 10
     for i in range(0, len(lines), batch_size):
         batch = lines[i:i+batch_size]
         try:
-            translations = translator.translate(batch, src="en", dest="my")
-            for t in translations:
-                result.append(t.text)
+            translations = translator.translate_batch(batch)
+            result.extend(t or batch[j] for j, t in enumerate(translations))
         except Exception:
-            # Fallback: keep original if translation fails
             result.extend(batch)
-        time.sleep(0.3)  # polite delay
+        time.sleep(0.3)
     return result
 
 
@@ -82,13 +79,13 @@ def make_narration(myanmar_lines: list[str]) -> str:
     return " ".join(myanmar_lines[:50])
 
 
-# ── Request model ─────────────────────────────────────────────────────────────
+# ââ Request model âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 class ProcessRequest(BaseModel):
     youtube_url: str
 
 
-# ── Main endpoint ─────────────────────────────────────────────────────────────
+# ââ Main endpoint âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 @app.post("/process")
 async def process_video(req: ProcessRequest, x_api_key: Optional[str] = Header(None)):
@@ -101,7 +98,7 @@ async def process_video(req: ProcessRequest, x_api_key: Optional[str] = Header(N
     output_path = f"{tmp}/output.mp4"
 
     try:
-        # 1 — Download subtitles (English auto-subs)
+        # 1 â Download subtitles (English auto-subs)
         subprocess.run(
             ["yt-dlp", "--skip-download",
              "--write-auto-subs", "--sub-lang", "en",
@@ -118,31 +115,31 @@ async def process_video(req: ProcessRequest, x_api_key: Optional[str] = Header(N
                 break
 
         if not vtt:
-            raise RuntimeError("No subtitles found — try a YouTube video with English captions")
+            raise RuntimeError("No subtitles found â try a YouTube video with English captions")
 
         en_lines = parse_vtt(vtt)
         if not en_lines:
             raise RuntimeError("Could not parse subtitles")
 
-        # 2 — Translate to Myanmar (googletrans, free)
+        # 2 â Translate to Myanmar (googletrans, free)
         my_lines = translate_to_myanmar(en_lines)
 
-        # 3 — Build SRT & narration
+        # 3 â Build SRT & narration
         srt_text  = build_srt(my_lines, duration=60)
         narration = make_narration(my_lines)
 
         if not narration.strip():
             raise RuntimeError("Translation produced empty narration")
 
-        # 4 — Myanmar TTS via gTTS (free)
+        # 4 â Myanmar TTS via gTTS (free)
         audio_path = f"{tmp}/narration.mp3"
         gTTS(text=narration, lang="my", slow=False).save(audio_path)
 
-        # 5 — Save SRT
+        # 5 â Save SRT
         srt_path = f"{tmp}/subs.srt"
         open(srt_path, "w", encoding="utf-8").write(srt_text)
 
-        # 6 — Download source video
+        # 6 â Download source video
         subprocess.run(
             ["yt-dlp",
              "-f", "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720]",
@@ -157,7 +154,7 @@ async def process_video(req: ProcessRequest, x_api_key: Optional[str] = Header(N
             None,
         )
 
-        # 7 — FFmpeg: scale to 9:16, burn subtitles, replace audio, trim 60s
+        # 7 â FFmpeg: scale to 9:16, burn subtitles, replace audio, trim 60s
         sub_style = (
             "FontName=Noto Sans Myanmar,FontSize=22,"
             "PrimaryColour=&Hffffff,OutlineColour=&H000000,Outline=2,Alignment=2"
@@ -210,13 +207,13 @@ async def process_video(req: ProcessRequest, x_api_key: Optional[str] = Header(N
         raise HTTPException(500, str(exc))
 
 
-# ── Health check ──────────────────────────────────────────────────────────────
+# ââ Health check ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 @app.get("/health")
 async def health():
     return {
         "status": "ok",
-        "mode": "100% free — no API keys needed",
+        "mode": "100% free â no API keys needed",
         "ffmpeg": subprocess.run(["which", "ffmpeg"],  capture_output=True).returncode == 0,
         "yt_dlp": subprocess.run(["which", "yt-dlp"],  capture_output=True).returncode == 0,
     }

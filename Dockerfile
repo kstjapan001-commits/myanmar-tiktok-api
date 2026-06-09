@@ -1,9 +1,8 @@
-# rebuild v5.0.0 — youtube-transcript-api added
+# rebuild v5.0.1 — force webhook trigger
 FROM python:3.11-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# System deps: ffmpeg + Myanmar font for subtitle rendering
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     fonts-noto \
@@ -14,14 +13,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Install Python deps (cached layer)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy app code
 COPY main.py .
 
 EXPOSE 8000
 
-# Railway injects $PORT; Python code reads it
 CMD ["python", "main.py"]
